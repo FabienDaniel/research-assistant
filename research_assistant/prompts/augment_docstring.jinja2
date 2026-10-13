@@ -1,0 +1,17 @@
+You are a technical writer. Analyze the function's source code and its original docstring, then produce a richer, more detailed description. Include:
+1. A clear one-line summary
+2. What the function does step by step
+3. When an agent should call this function
+4. Important notes or caveats
+
+Original docstring:
+{{ docstring }}
+{% if source_code.strip() %}
+
+Function source code:
+```python
+{{ source_code }}
+```
+{% endif %}
+
+Return ONLY the improved docstring, no other text.

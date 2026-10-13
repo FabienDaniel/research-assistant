@@ -21,7 +21,7 @@ There are no tests, linter or build step. `main.py` is an unused uv stub. `L5.ip
 
 ## Architecture
 
-- `L5.py`: wiring and the agent loop. Connects to Oracle, builds stores, registers tools, defines `AGENT_SYSTEM_PROMPT`, `call_agent()` and the interactive thread-selection REPL.
+- `L5.py`: wiring and the agent loop. Connects to Oracle, builds stores, registers tools, loads `AGENT_SYSTEM_PROMPT` from `prompts/agent_system.md`, `call_agent()` and the interactive thread-selection REPL.
 - `research_assistant/`: reusable machinery, one topic per module.
   - `config.py`: `.env` loading, warning/log suppression. Import it first because its module-level warnings filter must apply before torch/HuggingFace load.
   - `db/`: `setup.py` (admin bootstrap, VECTOR user, ASSM tablespace), `connection.py` (connect with retries), `schema.py` (SQL table and vector index creation), `diagnostics.py` (vector object listing and cleanup).
@@ -29,6 +29,7 @@ There are no tests, linter or build step. `main.py` is an unused uv stub. `L5.ip
   - `tools/`: `toolbox.py` (`Toolbox`, `ToolMetadata`), `common.py` (arXiv and time tools), `summary_tools.py` (`expand_summary`, `summarize_and_store`).
   - `context/`: `usage.py` (token estimate), `summarization.py` (summarise, offload, mark conversations), `sample_data.py` (demo conversation).
   - `rendering.py`: ANSI terminal rendering of memory blocks.
+  - `prompts/`: every LLM prompt, as `.md` (static, `load_prompt(name)`) or `.jinja2` (dynamic, `render_prompt(name, **vars)`). Templates are named after the function that uses them.
 
 ### Memory stores
 
@@ -37,7 +38,7 @@ Seven Oracle tables, named in `L5.py` (`ALL_TABLES`):
 - SQL tables: `CONVERSATIONAL_MEMORY` (per `thread_id`, rows get marked with a `summary_id` once summarized) and `TOOL_LOG_MEMORY` (full tool outputs).
 - `OracleVS` vector stores: `SEMANTIC_MEMORY` (knowledge base, arXiv paper chunks), `WORKFLOW_MEMORY` (past tool-step sequences), `TOOLBOX_MEMORY` (tool descriptions for semantic tool retrieval), `ENTITY_MEMORY` (LLM-extracted entities), `SUMMARY_MEMORY`.
 
-`StoreManager` constructs the stores. `MemoryManager` exposes paired `read_*` / `write_*` methods per store. The `read_*` methods return raw rows or documents. `context/segments.py` formats them into the markdown segments (`## Conversation Memory`, etc.) that the system prompt refers to by name, so changing a heading means updating `AGENT_SYSTEM_PROMPT` and `offload_to_summary` too.
+`StoreManager` constructs the stores. `MemoryManager` exposes paired `read_*` / `write_*` methods per store. The `read_*` methods return raw rows or documents. `context/segments.py` renders them through `prompts/*_segment.jinja2` into the markdown segments (`## Conversation Memory`, etc.) that the system prompt refers to by name, so changing a heading means updating `prompts/agent_system.md` and `offload_to_summary` too.
 
 ### Agent turn (`call_agent`)
 
@@ -56,6 +57,41 @@ Defined as closures inside `register_common_tools` / `register_summary_tools` in
 - Oracle credentials are hardcoded, not read from `.env`. `setup_oracle_database()` connects as `system` with its default admin password and creates user `VECTOR` / `VectorPwd_2025`, which `L5.py` passes explicitly. `ORACLE_PASSWORD` in `.env` must match the admin default in `research_assistant/db/setup.py` or setup fails.
 - `setup_oracle_database()` runs on every start and is meant to be idempotent. It picks an ASSM tablespace to avoid ORA-43853 on vector indexes.
 - Embeddings run locally via `sentence-transformers/paraphrase-mpnet-base-v2` (HuggingFace), which pulls torch.
+
+## Prompts
+
+Prompts templates are all centralized in a single place. Static prompts are written a markdown. When dynamic, we use jinja2 templates with these settings:
+```python
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
+
+environment = Environment(
+    loader=FileSystemLoader(PROMPT_DIR),
+    undefined=StrictUndefined,
+    autoescape=False,
+    trim_blocks=True,
+    lstrip_blocks=True,
+)
+```
+Jinja2 is useful when you have loops, optional sections, and reusable templates. For simple variable substitution, it might be unnecessary.
+It can also introduce ambiguity when a prompt contains literal template syntax, such as JSON examples with braces, or when another system uses its own templating language.
+For prompts containing structured data, I recommend explicitly serializing the data in Python rather than constructing JSON manually inside a template as for example:
+
+```python
+import json
+
+document_payload = json.dumps(
+    {
+        "title": title,
+        "content": document,
+        "metadata": metadata,
+    },
+    ensure_ascii=False,
+)
+```
+
+You can then inject that serialized payload into a clearly delimited section of your prompt.
+
+
 
 ## CUDA / torch pin
 

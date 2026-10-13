@@ -1,0 +1,12 @@
+{% if rows %}
+## Expanded Conversations for Summary ID: {{ summary_id }}
+Total messages: {{ rows | length }}
+
+{% for _, role, content, timestamp in rows %}
+[{{ timestamp.strftime('%Y-%m-%d %H:%M:%S') if timestamp else 'Unknown' }}] [{{ role | upper }}]
+{{ content }}
+
+{% endfor %}
+{% else %}
+No conversations found for summary_id: {{ summary_id }}
+{% endif %}

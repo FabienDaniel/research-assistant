@@ -1,0 +1,14 @@
+## Knowledge Base Memory
+### What this memory is
+Retrieved background documents and previously ingested reference material relevant to the current query.
+### How you should leverage it
+- Ground responses in these passages when making factual or technical claims.
+- Prefer concrete details from this memory over unsupported assumptions.
+- If evidence is missing or ambiguous, state uncertainty and request clarification or additional retrieval.
+### Retrieved passages
+
+{% for doc in docs %}
+{{ doc.page_content }}
+{% else %}
+(No relevant knowledge base passages found.)
+{% endfor %}

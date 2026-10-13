@@ -1,5 +1,7 @@
 import json as json_lib
 
+from research_assistant.prompts import render_prompt
+
 
 def augment_docstring(
         llm_client, model: str, docstring: str, source_code: str = ""
@@ -12,26 +14,8 @@ def augment_docstring(
     if not docstring.strip() and not source_code.strip():
         return "No description provided."
 
-    code_section = ""
-    if source_code.strip():
-        code_section = (
-            "\n\nFunction source code:\n"
-            f"```python\n{source_code}\n```"
-        )
-
-    prompt = (
-        "You are a technical writer. "
-        "Analyze the function's source code and its "
-        "original docstring, then produce a richer, "
-        "more detailed description. Include:\n"
-        "1. A clear one-line summary\n"
-        "2. What the function does step by step\n"
-        "3. When an agent should call this function\n"
-        "4. Important notes or caveats\n\n"
-        f"Original docstring:\n{docstring}"
-        f"{code_section}\n\n"
-        "Return ONLY the improved docstring, "
-        "no other text."
+    prompt = render_prompt(
+        "augment_docstring", docstring=docstring, source_code=source_code
     )
 
     response = llm_client.chat.completions.create(
@@ -49,15 +33,7 @@ def generate_queries(llm_client, model: str, docstring: str, num_queries: int = 
     """
     Generate synthetic example queries that would lead to using this tool.
     """
-    prompt = f"""Based on the following tool description,
-            generate {num_queries} diverse example queries
-            that a user might ask when they need this tool. Make them natural and varied.
-
-            Tool description:
-            {docstring}
-
-            Return ONLY a JSON array of strings, like: ["query1", "query2", ...]
-        """
+    prompt = render_prompt("generate_queries", docstring=docstring, num_queries=num_queries)
 
     response = llm_client.chat.completions.create(
         model=model,

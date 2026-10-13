@@ -1,0 +1,20 @@
+## Summary Memory
+### What this memory is
+Compressed snapshots of older conversation windows preserved to retain long-range context.
+### How you should leverage it
+- Use summaries to maintain continuity when full historical messages are not in the active context window.
+- Call expand_summary(id) before depending on exact quotes, fine-grained details, or step-by-step chronology.
+### Available summaries
+{% if docs %}
+Use expand_summary(id) to retrieve the detailed underlying conversation.
+{% if thread_id is not none %}
+Scope: thread_id = {{ thread_id }}
+{% endif %}
+{% for doc in docs %}
+  • [ID: {{ doc.metadata.get('id', '?') }}] {{ doc.metadata.get('description', 'No description') }}
+{% endfor %}
+{% elif thread_id is not none %}
+(No summaries available for thread {{ thread_id }}.)
+{% else %}
+(No summaries available.)
+{% endif %}

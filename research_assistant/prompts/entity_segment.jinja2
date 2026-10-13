@@ -1,0 +1,14 @@
+## Entity Memory
+### What this memory is
+Entity-level context such as people, organizations, systems, tools, and other named items previously identified in conversations or documents.
+### How you should leverage it
+- Use entities to disambiguate references and maintain consistent naming.
+- Preserve important attributes (roles, relationships, descriptions) across turns.
+- Personalize and contextualize responses using relevant known entities.
+### Retrieved entities
+
+{% for doc in docs %}
+• {{ doc.metadata.get('name', '?') }}: {{ doc.metadata.get('description', '') }}
+{% else %}
+(No entities found.)
+{% endfor %}

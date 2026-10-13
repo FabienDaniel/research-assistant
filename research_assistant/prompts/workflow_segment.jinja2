@@ -1,0 +1,17 @@
+## Workflow Memory
+### What this memory is
+Past task trajectories that include query context, ordered steps taken, and prior outcomes.
+### How you should leverage it
+- Use these workflows as reusable execution patterns for planning and tool orchestration.
+- Adapt step sequences to the current task rather than copying blindly.
+- Reuse successful patterns first, then adjust when task scope or constraints differ.
+### Retrieved workflows
+
+{% for doc in docs %}
+{% if not loop.first %}
+---
+{% endif %}
+{{ doc.page_content }}
+{% else %}
+(No relevant workflows found.)
+{% endfor %}

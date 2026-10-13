@@ -1,0 +1,14 @@
+## Conversation Memory
+### What this memory is
+Chronological, unsummarized messages from the current thread. This memory captures user intent, constraints, and commitments made in recent turns.
+### How you should leverage it
+- Preserve continuity with prior decisions, terminology, and user preferences.
+- Resolve references like "that", "previous step", or "the paper above" using earlier turns.
+- If older context conflicts with newer user instructions, prioritize the latest user direction.
+### Retrieved messages
+
+{% for role, content, timestamp in rows %}
+[{{ timestamp.strftime('%H:%M:%S') }}] [{{ role }}] {{ content }}
+{% else %}
+(No unsummarized messages found for this thread.)
+{% endfor %}

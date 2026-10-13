@@ -1,5 +1,7 @@
 import uuid
 
+from research_assistant.prompts import render_prompt
+
 
 def summarise_context_window(
         content: str,
@@ -45,23 +47,7 @@ def summarise_context_window(
                 return label
         return "Recent thread context, decisions, and open actions"
 
-    summary_prompt = f"""You are creating durable memory for an AI research assistant.
-Summarize this conversation so it can be resumed accurately later.
-
-Output with exactly these headings:
-### Technical Information
-### Emotional Context
-### Entities & References
-### Action Items & Decisions
-
-Rules:
-- Keep concrete details (names, dates, APIs, errors, decisions).
-- Separate confirmed facts from open questions where relevant.
-- Do not invent information.
-- Keep it concise and useful for continuation.
-
-Conversation:
-{cleaned[:6000]}"""
+    summary_prompt = render_prompt("summarize_conversation", conversation=cleaned[:6000])
 
     response = llm_client.chat.completions.create(
         model=model,
@@ -72,14 +58,7 @@ Conversation:
 
     # Retry once with a simpler prompt if the model returns empty content.
     if not summary:
-        retry_prompt = f"""Summarize this conversation in <= 180 words using these headings:
-### Technical Information
-### Emotional Context
-### Entities & References
-### Action Items & Decisions
-
-Conversation:
-{cleaned[:6000]}"""
+        retry_prompt = render_prompt("summarize_conversation_retry", conversation=cleaned[:6000])
         retry = llm_client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": retry_prompt}],
@@ -101,16 +80,7 @@ Conversation:
             "Not available from model output."
         )
 
-    desc_prompt = f"""Create a short 8-12 word label for this summary.
-Return ONLY the label.
-
-Requirements:
-- Be specific about the topic/outcome.
-- Include a concrete signal (entity, task, or issue).
-- Do not use generic labels like "Conversation summary".
-
-Summary:
-{summary}"""
+    desc_prompt = render_prompt("summary_label", summary=summary)
 
     desc_response = llm_client.chat.completions.create(
         model=model,

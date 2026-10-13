@@ -1,14 +1,14 @@
 import json as json_lib
 
+from research_assistant.prompts import render_prompt
+
 
 def extract_entities(text: str, llm_client) -> list[dict]:
     """Use LLM to extract entities (people, places, systems) from text."""
     if not text or len(text.strip()) < 5:
         return []
 
-    prompt = f'''Extract entities from: "{text[:500]}"
-Return JSON: [{{"name": "X", "type": "PERSON|PLACE|SYSTEM", "description": "brief"}}]
-If none: []'''
+    prompt = render_prompt("extract_entities", text=text[:500])
 
     try:
         response = llm_client.chat.completions.create(
