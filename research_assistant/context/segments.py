@@ -4,8 +4,10 @@
 
 def conversation_segment(rows) -> str:
     """Format chronological (role, content, timestamp) rows as the Conversation Memory segment."""
-    messages = [f"[{ts.strftime('%H:%M:%S')}] [{role}] {content}" for role, content, ts in rows]
-    messages_formatted = '\n'.join(messages)
+    messages = [
+        f"[{ts.strftime('%H:%M:%S')}] [{role}] {content}" for role, content, ts in rows
+    ]
+    messages_formatted = "\n".join(messages)
     if not messages_formatted:
         messages_formatted = "(No unsummarized messages found for this thread.)"
     return f"""## Conversation Memory
@@ -75,9 +77,12 @@ Entity-level context such as people, organizations, systems, tools, and other na
 ### Retrieved entities
 (No entities found.)"""
 
-    entities = [f"• {doc.metadata.get('name', '?')}: {doc.metadata.get('description', '')}"
-                for doc in docs if hasattr(doc, 'metadata')]
-    entities_formatted = '\n'.join(entities)
+    entities = [
+        f"• {doc.metadata.get('name', '?')}: {doc.metadata.get('description', '')}"
+        for doc in docs
+        if hasattr(doc, "metadata")
+    ]
+    entities_formatted = "\n".join(entities)
     return f"""## Entity Memory
 ### What this memory is
 Entity-level context such as people, organizations, systems, tools, and other named items previously identified in conversations or documents.
@@ -98,14 +103,17 @@ def summary_segment(docs, thread_id: str | None = None) -> str:
             if thread_id is not None
             else "(No summaries available.)"
         )
-        return """## Summary Memory
+        return (
+            """## Summary Memory
 ### What this memory is
 Compressed snapshots of older conversation windows preserved to retain long-range context.
 ### How you should leverage it
 - Use summaries to maintain continuity when full historical messages are not in the active context window.
 - Call expand_summary(id) before depending on exact quotes, fine-grained details, or step-by-step chronology.
 ### Available summaries
-""" + scope_note
+"""
+            + scope_note
+        )
 
     lines = [
         "## Summary Memory",
@@ -115,13 +123,13 @@ Compressed snapshots of older conversation windows preserved to retain long-rang
         "- Use summaries to maintain continuity when full historical messages are not in the active context window.",
         "- Call expand_summary(id) before depending on exact quotes, fine-grained details, or step-by-step chronology.",
         "### Available summaries",
-        "Use expand_summary(id) to retrieve the detailed underlying conversation."
+        "Use expand_summary(id) to retrieve the detailed underlying conversation.",
     ]
     if thread_id is not None:
         lines.append(f"Scope: thread_id = {thread_id}")
     for doc in docs:
-        sid = doc.metadata.get('id', '?')
-        desc = doc.metadata.get('description', 'No description')
+        sid = doc.metadata.get("id", "?")
+        desc = doc.metadata.get("description", "No description")
         lines.append(f"  • [ID: {sid}] {desc}")
     return "\n".join(lines)
 
@@ -135,7 +143,7 @@ def expanded_conversations_segment(summary_id: str, rows) -> str:
     lines.append(f"Total messages: {len(rows)}\n")
 
     for msg_id, role, content, timestamp in rows:
-        ts_str = timestamp.strftime('%Y-%m-%d %H:%M:%S') if timestamp else "Unknown"
+        ts_str = timestamp.strftime("%Y-%m-%d %H:%M:%S") if timestamp else "Unknown"
         lines.append(f"[{ts_str}] [{role.upper()}]")
         lines.append(f"{content}")
         lines.append("")  # Empty line between messages
@@ -150,6 +158,9 @@ def build_memory_context(memory_manager, query: str, thread_id: str) -> str:
         knowledge_base_segment(memory_manager.read_knowledge_base(query)),
         workflow_segment(memory_manager.read_workflow(query)),
         entity_segment(memory_manager.read_entity(query)),
-        summary_segment(memory_manager.read_summary_context(query, thread_id=thread_id), thread_id=thread_id),
+        summary_segment(
+            memory_manager.read_summary_context(query, thread_id=thread_id),
+            thread_id=thread_id,
+        ),
     ]
     return "".join(segment + "\n\n" for segment in segments)

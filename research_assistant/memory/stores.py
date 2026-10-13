@@ -5,8 +5,15 @@ from langchain_oracledb.vectorstores import OracleVS
 class StoreManager:
     """Manages all stores (vector stores and SQL tables) with getter methods for easy access."""
 
-    def __init__(self, client, embedding_function, table_names, distance_strategy, conversational_table,
-                 tool_log_table: str | None = None):
+    def __init__(
+        self,
+        client,
+        embedding_function,
+        table_names,
+        distance_strategy,
+        conversational_table,
+        tool_log_table: str | None = None,
+    ):
         """
         Initialize all stores.
 
@@ -28,35 +35,35 @@ class StoreManager:
         self._knowledge_base_vs = OracleVS(
             client=client,
             embedding_function=embedding_function,
-            table_name=table_names['knowledge_base'],
+            table_name=table_names["knowledge_base"],
             distance_strategy=distance_strategy,
         )
 
         self._workflow_vs = OracleVS(
             client=client,
             embedding_function=embedding_function,
-            table_name=table_names['workflow'],
+            table_name=table_names["workflow"],
             distance_strategy=distance_strategy,
         )
 
         self._toolbox_vs = OracleVS(
             client=client,
             embedding_function=embedding_function,
-            table_name=table_names['toolbox'],
+            table_name=table_names["toolbox"],
             distance_strategy=distance_strategy,
         )
 
         self._entity_vs = OracleVS(
             client=client,
             embedding_function=embedding_function,
-            table_name=table_names['entity'],
+            table_name=table_names["entity"],
             distance_strategy=distance_strategy,
         )
 
         self._summary_vs = OracleVS(
             client=client,
             embedding_function=embedding_function,
-            table_name=table_names['summary'],
+            table_name=table_names["summary"],
             distance_strategy=distance_strategy,
         )
 
@@ -97,7 +104,6 @@ class StoreManager:
         Creates vectorizer preference for hybrid indexing.
         """
         self._kb_vectorizer_pref = OracleVectorizerPreference.create_preference(
-            vector_store=self._knowledge_base_vs,
-            preference_name=preference_name
+            vector_store=self._knowledge_base_vs, preference_name=preference_name
         )
         return self._kb_vectorizer_pref

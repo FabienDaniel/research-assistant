@@ -14,7 +14,7 @@ If none: []'''
         response = llm_client.chat.completions.create(
             model="gpt-5",
             messages=[{"role": "user", "content": prompt}],
-            max_completion_tokens=2000
+            max_completion_tokens=2000,
         )
         result = response.choices[0].message.content.strip()
 
@@ -23,9 +23,16 @@ If none: []'''
         if start == -1 or end == -1:
             return []
 
-        parsed = json_lib.loads(result[start:end + 1])
-        return [{"name": e["name"], "type": e.get("type", "UNKNOWN"), "description": e.get("description", "")}
-                for e in parsed if isinstance(e, dict) and e.get("name")]
+        parsed = json_lib.loads(result[start : end + 1])
+        return [
+            {
+                "name": e["name"],
+                "type": e.get("type", "UNKNOWN"),
+                "description": e.get("description", ""),
+            }
+            for e in parsed
+            if isinstance(e, dict) and e.get("name")
+        ]
     # Best effort. A malformed LLM reply must not break the agent turn.
     except Exception:  # noqa: BLE001
         return []
