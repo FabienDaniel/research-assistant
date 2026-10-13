@@ -1,5 +1,8 @@
 from research_assistant.context.segments import expanded_conversations_segment
-from research_assistant.context.summarization import summarise_context_window, summarize_conversation
+from research_assistant.context.summarization import (
+    summarise_context_window,
+    summarize_conversation,
+)
 
 
 def register_summary_tools(toolbox, memory_manager, llm_client):
@@ -15,7 +18,7 @@ def register_summary_tools(toolbox, memory_manager, llm_client):
         dict of registered tool functions
     """
 
-    def expand_summary(summary_id: str, thread_id: str = None) -> str:
+    def expand_summary(summary_id: str, thread_id: str | None = None) -> str:
         """
         Expand a summary reference to retrieve the original conversations.
 
@@ -32,7 +35,7 @@ def register_summary_tools(toolbox, memory_manager, llm_client):
 
 {original_conversations}"""
 
-    def summarize_and_store(text: str = "", thread_id: str = None) -> str:
+    def summarize_and_store(text: str = "", thread_id: str | None = None) -> str:
         """
         Summarize content and store it in Summary Memory.
 

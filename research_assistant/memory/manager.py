@@ -1,6 +1,8 @@
 import json as json_lib
 from datetime import datetime
 
+import oracledb
+
 
 def list_threads(conn, table_name):
     """
@@ -252,7 +254,7 @@ class MemoryManager:
                     {"name": tool_name},
                 )
                 return cur.fetchone()[0] > 0
-        except Exception:
+        except oracledb.Error:
             return False
 
     def read_toolbox(self, query: str, k: int = 3) -> list[dict]:

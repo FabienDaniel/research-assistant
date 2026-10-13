@@ -19,9 +19,11 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+import oracledb
+
 from research_assistant.config import load_env
-from research_assistant.db.setup import setup_oracle_database
 from research_assistant.db.connection import connect_to_oracle
+from research_assistant.db.setup import setup_oracle_database
 
 load_env()
 
@@ -38,8 +40,8 @@ database_connection = connect_to_oracle(
 
 print("Using user:", database_connection.username)
 
-from openai import OpenAI
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from openai import OpenAI
 
 client = OpenAI()
 
@@ -73,7 +75,7 @@ if args.reset:
             with database_connection.cursor() as cur:
                 cur.execute(f"DROP TABLE {table} PURGE")
                 print(f"  - {table} (dropped)")
-        except Exception as e:
+        except oracledb.Error as e:
             if "ORA-00942" in str(e):
                 print(f"  - {table} (not exists)")
             else:
@@ -83,13 +85,17 @@ if args.reset:
 else:
     print("📚 Resuming from existing memory (use --reset to start clean)")
 
-from research_assistant.db.schema import create_conversational_history_table, create_tool_log_table
+from research_assistant.db.schema import (
+    create_conversational_history_table,
+    create_tool_log_table,
+)
 from research_assistant.memory.manager import list_threads
 
 CONVERSATION_HISTORY_TABLE = create_conversational_history_table(database_connection, CONVERSATIONAL_TABLE)
 TOOL_LOG_HISTORY_TABLE = create_tool_log_table(database_connection, TOOL_LOG_TABLE)
 
 from langchain_community.vectorstores.utils import DistanceStrategy
+
 from research_assistant.memory.stores import StoreManager
 
 store_manager = StoreManager(
@@ -118,8 +124,8 @@ tool_log_table = store_manager.get_tool_log_table()
 print("✅ All stores loaded via StoreManager")
 
 from research_assistant.memory.manager import MemoryManager
-from research_assistant.tools.toolbox import Toolbox
 from research_assistant.tools.common import register_common_tools
+from research_assistant.tools.toolbox import Toolbox
 
 memory_manager = MemoryManager(
     conn=database_connection,
@@ -141,14 +147,10 @@ print("✅ MemoryManager and Toolbox initialized")
 
 # ==================== CONTEXT ENGINEERING ====================
 
-from research_assistant.context.usage import calculate_context_usage, monitor_context_window
-from research_assistant.context.summarization import (
-    summarise_context_window,
-    offload_to_summary,
-    summarize_conversation,
-)
 from research_assistant.context.entities import extract_entities
 from research_assistant.context.segments import build_memory_context
+from research_assistant.context.summarization import offload_to_summary
+from research_assistant.context.usage import calculate_context_usage
 from research_assistant.rendering import render_markdown
 
 print("✅ Context management functions loaded")
@@ -201,7 +203,7 @@ def execute_tool(tool_name: str, tool_args: dict, current_thread_id: str | None 
 
 
 # ==================== OPENAI CHAT FUNCTION ====================
-def call_openai_chat(messages: list, tools: list = None, model: str = "gpt-5-mini"):
+def call_openai_chat(messages: list, tools: list | None = None, model: str = "gpt-5-mini"):
     """Call OpenAI Chat Completions API with tools."""
     kwargs = {"model": model, "messages": messages}
     if tools:
@@ -256,8 +258,8 @@ def call_agent(query: str, thread_id: str = "1", max_iterations: int = 10) -> st
     try:
         for entity in extract_entities(query, client):
             memory_manager.write_entity(entity["name"], entity["type"], entity["description"])
-    except Exception:
-        pass
+    except oracledb.Error as e:
+        print(f"⚠️ Entity write failed: {e}")
 
     # 5. Agent loop
     messages = [{"role": "system", "content": AGENT_SYSTEM_PROMPT}, {"role": "user", "content": context}]
@@ -289,7 +291,8 @@ def call_agent(query: str, thread_id: str = "1", max_iterations: int = 10) -> st
                     status = "success"
                     error_message = None
                     steps.append(f"{tool_name}({args_display}) → success")
-                except Exception as e:
+                # Any tool failure goes back to the model as the tool result.
+                except Exception as e:  # noqa: BLE001
                     result = f"Error: {e}"
                     status = "failed"
                     error_message = str(e)
@@ -331,8 +334,8 @@ def call_agent(query: str, thread_id: str = "1", max_iterations: int = 10) -> st
     try:
         for entity in extract_entities(final_answer, client):
             memory_manager.write_entity(entity["name"], entity["type"], entity["description"])
-    except Exception:
-        pass
+    except oracledb.Error as e:
+        print(f"⚠️ Entity write failed: {e}")
     memory_manager.write_conversational_memory(final_answer, "assistant", thread_id)
 
     print("\n" + "=" * 50 + "\n💬 ANSWER:")
@@ -388,7 +391,8 @@ def run_interactive_session():
 
         try:
             call_agent(question, thread_id=thread_id)
-        except Exception as e:
+        # One failing question must not end the session.
+        except Exception as e:  # noqa: BLE001
             print(f"\n❌ The agent failed on that question: {e}")
 
     print("👋 Session ended")

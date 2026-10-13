@@ -30,7 +30,7 @@ def connect_to_oracle(max_retries=3, retry_delay=5, user="system", password="You
                     cur.execute("SELECT banner FROM v$version WHERE banner LIKE 'Oracle%';")
                     banner = cur.fetchone()[0]
                     print(f"\n{banner}")
-                except Exception:
+                except oracledb.Error:
                     cur.execute("SELECT 1 FROM DUAL")
                     cur.fetchone()
                     print("  Connected to Oracle Database")

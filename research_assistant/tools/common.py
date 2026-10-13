@@ -1,5 +1,5 @@
 import json as json_lib
-from datetime import datetime
+from datetime import UTC, datetime
 
 from research_assistant.tools.summary_tools import register_summary_tools
 
@@ -29,10 +29,10 @@ def register_common_tools(
         dict: Dictionary of registered tool names to their functions
     """
     import urllib.request
+
     import arxiv
     import pymupdf
     from langchain_text_splitters import RecursiveCharacterTextSplitter
-    from datetime import timezone
 
     # These tools talk to arxiv.py directly rather than through langchain_community's
     # ArxivRetriever/ArxivLoader. That integration calls Search.results() and
@@ -112,7 +112,7 @@ def register_common_tools(
         )
         chunks = splitter.split_text(full_text)
 
-        ts_utc = datetime.now(timezone.utc).isoformat()
+        ts_utc = datetime.now(UTC).isoformat()
         metadatas = []
         for i in range(len(chunks)):
             metadatas.append({

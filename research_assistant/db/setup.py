@@ -25,7 +25,7 @@ def setup_oracle_database(admin_user="system", admin_password="YourPassword123",
             user=admin_user, password=admin_password, dsn=dsn
         )
         print(f"  Connected as {admin_user}")
-    except Exception as e:
+    except oracledb.Error as e:
         print(f"  Admin connection failed: {e}")
         return False
 
@@ -76,7 +76,7 @@ def setup_oracle_database(admin_user="system", admin_password="YourPassword123",
             print("  VECTOR user created but no ASSM tablespace"
                   " found — JSON columns may fail (ORA-43853)")
 
-    except Exception as e:
+    except oracledb.Error as e:
         print(f"  Warning during setup: {e}")
     finally:
         admin_conn.close()
@@ -92,7 +92,7 @@ def setup_oracle_database(admin_user="system", admin_password="YourPassword123",
             cur.fetchone()
         conn.close()
         print("  Connection successful!")
-    except Exception as e:
+    except oracledb.Error as e:
         print(f"  Connection failed: {e}")
         return False
 
@@ -138,16 +138,18 @@ def _find_assm_tablespace(conn):
             if row:
                 print(f"  Found ASSM tablespace: {row[0]}")
                 return row[0]
-    except Exception as e:
+    except oracledb.Error as e:
         print(f"  USER_TABLESPACES query failed: {e}")
 
     # Step 2: No ASSM tablespace found — try creating DATA
     # Try with OMF first, then with explicit path if possible
     create_sqls = [
-        "CREATE TABLESPACE DATA"
-        " DATAFILE SIZE 500M"
-        " AUTOEXTEND ON NEXT 100M MAXSIZE UNLIMITED"
-        " SEGMENT SPACE MANAGEMENT AUTO"
+        (
+            "CREATE TABLESPACE DATA"
+            " DATAFILE SIZE 500M"
+            " AUTOEXTEND ON NEXT 100M MAXSIZE UNLIMITED"
+            " SEGMENT SPACE MANAGEMENT AUTO"
+        )
     ]
     # Try to discover datafile path for non-OMF installs
     try:
@@ -166,8 +168,8 @@ def _find_assm_tablespace(conn):
                                    f" MAXSIZE UNLIMITED"
                                    f" SEGMENT SPACE MANAGEMENT AUTO"
                                    )
-    except Exception:
-        pass
+    except oracledb.Error as e:
+        print(f"  DBA_DATA_FILES query failed: {e}")
 
     for sql in create_sqls:
         try:
@@ -176,7 +178,7 @@ def _find_assm_tablespace(conn):
                 conn.commit()
             print("  Created DATA tablespace (ASSM)")
             return 'DATA'
-        except Exception as e:
+        except oracledb.Error as e:
             err = str(e)
             if "ORA-01543" in err:
                 print("  DATA tablespace already exists")

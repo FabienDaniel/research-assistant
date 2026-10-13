@@ -1,6 +1,6 @@
 import inspect
 import uuid
-from typing import Callable, Optional, Union
+from collections.abc import Callable
 
 from pydantic import BaseModel
 
@@ -82,8 +82,8 @@ class Toolbox:
         )
 
     def register_tool(
-            self, func: Optional[Callable] = None, augment: bool = False
-    ) -> Union[str, Callable]:
+            self, func: Callable | None = None, augment: bool = False
+    ) -> str | Callable:
         """
         Register a function as a tool in the toolbox.
 

@@ -32,6 +32,10 @@ explicit = true
 [tool.uv.sources]
 torch = { index = "pytorch-cu118" }
 
+[tool.ruff]
+# Original course notebook. It imports the removed helper.py and is kept for reference only.
+extend-exclude = ["L5.ipynb"]
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.7.0",

@@ -1,4 +1,7 @@
-def cleanup_vector_memory(conn, drop_tables: bool = False, table_prefix: str = None):
+import oracledb
+
+
+def cleanup_vector_memory(conn, drop_tables: bool = False, table_prefix: str | None = None):
     """
     Clean up vector indexes and optionally tables to free up vector memory space.
 
@@ -42,7 +45,7 @@ def cleanup_vector_memory(conn, drop_tables: bool = False, table_prefix: str = N
                     cur.execute(f"DROP INDEX {idx_name}")
                     print(f"  ✅ Dropped index: {idx_name} (on {table_name})")
                     dropped_indexes += 1
-                except Exception as e:
+                except oracledb.Error as e:
                     print(f"  ⚠️ Failed to drop {idx_name}: {e}")
             conn.commit()
 
@@ -68,7 +71,7 @@ def cleanup_vector_memory(conn, drop_tables: bool = False, table_prefix: str = N
                         cur.execute(f"DROP TABLE {table_name} PURGE")
                         print(f"  ✅ Dropped table: {table_name}")
                         dropped_tables += 1
-                    except Exception as e:
+                    except oracledb.Error as e:
                         print(f"  ⚠️ Failed to drop {table_name}: {e}")
                 conn.commit()
         else:
@@ -125,7 +128,7 @@ def list_vector_objects(conn):
                     cur.execute(f"SELECT COUNT(*) FROM {table_name}")
                     count = cur.fetchone()[0]
                     print(f"  - {table_name}.{col_name} ({count:,} rows)")
-                except:
+                except oracledb.Error:
                     print(f"  - {table_name}.{col_name}")
         else:
             print("  (none)")

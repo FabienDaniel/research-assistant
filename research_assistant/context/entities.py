@@ -26,5 +26,6 @@ If none: []'''
         parsed = json_lib.loads(result[start:end + 1])
         return [{"name": e["name"], "type": e.get("type", "UNKNOWN"), "description": e.get("description", "")}
                 for e in parsed if isinstance(e, dict) and e.get("name")]
-    except:
+    # Best effort. A malformed LLM reply must not break the agent turn.
+    except Exception:  # noqa: BLE001
         return []
