@@ -11,21 +11,24 @@ A memory-aware agentic research assistant (derived from a DeepLearning.AI course
 ```bash
 docker compose up -d              # Oracle Free 23 (container: oracle-free, port 1521, service FREEPDB1)
 docker logs -f oracle-free        # wait for "DATABASE IS READY TO USE!"
-uv run python L5.py               # interactive session, resumes existing memory
-uv run python L5.py --reset       # drop all memory tables first
+uv run python -m research_assistant          # interactive session, resumes existing memory
+uv run python -m research_assistant --reset  # drop all memory tables first
+uv run pytest                     # agent loop tests, no Oracle or OpenAI needed
+uvx ruff@0.17.0 check .           # same ruff version as the pre-commit hook
 ```
 
-There are no tests, linter or build step. `main.py` is an unused uv stub. `L5.ipynb` is the original notebook and still imports the removed `helper.py`, so it no longer runs as-is. `L5.py` is the maintained script version.
+There is no build step. `pre-commit run --all-files` fails on this machine because pre-commit 4.7 needs a newer git than 2.25.1. `L5.ipynb` is the original notebook and still imports the removed `helper.py`, so it no longer runs as-is.
 
 `.env` needs `OPENAI_API_KEY` and `ORACLE_PASSWORD` (read by docker-compose). `research_assistant.config.load_env()` loads it via python-dotenv.
 
 ## Architecture
 
-- `L5.py`: wiring and the agent loop. Connects to Oracle, builds stores, registers tools, loads `AGENT_SYSTEM_PROMPT` from `prompts/agent_system.md`, `call_agent()` and the interactive thread-selection REPL.
-- `research_assistant/`: reusable machinery, one topic per module.
-  - `config.py`: `.env` loading, warning/log suppression. Import it first because its module-level warnings filter must apply before torch/HuggingFace load.
-  - `db/`: `setup.py` (admin bootstrap, VECTOR user, ASSM tablespace), `connection.py` (connect with retries), `schema.py` (SQL table and vector index creation), `diagnostics.py` (vector object listing and cleanup).
-  - `memory/`: `manager.py` (`MemoryManager`, `list_threads`), `stores.py` (`StoreManager`).
+- `research_assistant/`: everything lives here, one topic per module.
+  - `cli.py`: entry point (`__main__.py` calls `main`). Connects to Oracle, wires the agent, runs the interactive thread-selection REPL.
+  - `agent.py`: `ResearchAgent`, whose `answer(query, thread_id)` runs one turn.
+  - `config.py`: `.env` loading, warning/log suppression, Oracle connection constants. The package `__init__.py` imports it so its warnings filter applies before torch/HuggingFace load.
+  - `db/`: `setup.py` (admin bootstrap, VECTOR user, ASSM tablespace), `connection.py` (connect with retries), `schema.py` (table names, SQL table and vector index creation, `drop_tables`), `diagnostics.py` (vector object listing and cleanup).
+  - `memory/`: `manager.py` (`MemoryManager`, `list_threads`), `stores.py` (`build_memory_manager`).
   - `tools/`: `toolbox.py` (`Toolbox`, `ToolMetadata`), `common.py` (arXiv and time tools), `summary_tools.py` (`expand_summary`, `summarize_and_store`).
   - `context/`: `usage.py` (token estimate), `summarization.py` (summarise, offload, mark conversations), `sample_data.py` (demo conversation).
   - `rendering.py`: ANSI terminal rendering of memory blocks.
@@ -33,14 +36,14 @@ There are no tests, linter or build step. `main.py` is an unused uv stub. `L5.ip
 
 ### Memory stores
 
-Seven Oracle tables, named in `L5.py` (`ALL_TABLES`):
+Seven Oracle tables, named in `db/schema.py` (`ALL_TABLES`):
 
 - SQL tables: `CONVERSATIONAL_MEMORY` (per `thread_id`, rows get marked with a `summary_id` once summarized) and `TOOL_LOG_MEMORY` (full tool outputs).
 - `OracleVS` vector stores: `SEMANTIC_MEMORY` (knowledge base, arXiv paper chunks), `WORKFLOW_MEMORY` (past tool-step sequences), `TOOLBOX_MEMORY` (tool descriptions for semantic tool retrieval), `ENTITY_MEMORY` (LLM-extracted entities), `SUMMARY_MEMORY`.
 
-`StoreManager` constructs the stores. `MemoryManager` exposes paired `read_*` / `write_*` methods per store. The `read_*` methods return raw rows or documents. `context/segments.py` renders them through `prompts/*_segment.jinja2` into the markdown segments (`## Conversation Memory`, etc.) that the system prompt refers to by name, so changing a heading means updating `prompts/agent_system.md` and `offload_to_summary` too.
+`build_memory_manager` creates the tables and stores. `MemoryManager` exposes paired `read_*` / `write_*` methods per store. The `read_*` methods return raw rows or documents. `context/segments.py` renders them through `prompts/*_segment.jinja2` into the markdown segments (`## Conversation Memory`, etc.) that the system prompt refers to by name, so changing a heading means updating `prompts/agent_system.md` and `offload_to_summary` too.
 
-### Agent turn (`call_agent`)
+### Agent turn (`ResearchAgent.answer`)
 
 1. Assemble a partitioned context with `build_memory_context` (`context/segments.py`).
 2. Estimate tokens (`len // 4` against `MODEL_TOKEN_LIMITS`). Above 80%, `offload_to_summary` compresses into `SUMMARY_MEMORY` and leaves summary IDs in context. The agent can call `expand_summary(id)` to recover detail.
@@ -50,11 +53,11 @@ Seven Oracle tables, named in `L5.py` (`ALL_TABLES`):
 
 ### Tools
 
-Defined as closures inside `register_common_tools` / `register_summary_tools` in `research_assistant/tools/common.py` and `summary_tools.py` and registered with `Toolbox.register_tool` (decorator, optional LLM docstring augmentation). Registration skips the DB write when a tool name already exists in `TOOLBOX_MEMORY`, so changing a tool's docstring has no effect on retrieval until its row is removed (or `--reset`). Execution looks up the in-memory callable via `toolbox._tools_by_name`.
+Defined as closures inside `register_common_tools` / `register_summary_tools` in `research_assistant/tools/common.py` and `summary_tools.py` and registered with `Toolbox.register_tool` (decorator, optional LLM docstring augmentation). Registration skips the DB write when a tool name already exists in `TOOLBOX_MEMORY`, so changing a tool's docstring has no effect on retrieval until its row is removed (or `--reset`). Execution goes through `Toolbox.execute`, which looks up the in-memory callable and raises on an unknown name.
 
 ## Gotchas
 
-- Oracle credentials are hardcoded, not read from `.env`. `setup_oracle_database()` connects as `system` with its default admin password and creates user `VECTOR` / `VectorPwd_2025`, which `L5.py` passes explicitly. `ORACLE_PASSWORD` in `.env` must match the admin default in `research_assistant/db/setup.py` or setup fails.
+- Oracle credentials are hardcoded, not read from `.env`. `setup_oracle_database()` connects as `system` with its default admin password and creates user `VECTOR` / `VectorPwd_2025`, defined in `config.py`. `ORACLE_PASSWORD` in `.env` must match the admin default in `research_assistant/db/setup.py` or setup fails.
 - `setup_oracle_database()` runs on every start and is meant to be idempotent. It picks an ASSM tablespace to avoid ORA-43853 on vector indexes.
 - Embeddings run locally via `sentence-transformers/paraphrase-mpnet-base-v2` (HuggingFace), which pulls torch.
 

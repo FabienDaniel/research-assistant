@@ -1,3 +1,40 @@
+import oracledb
+
+CONVERSATIONAL_TABLE = "CONVERSATIONAL_MEMORY"
+KNOWLEDGE_BASE_TABLE = "SEMANTIC_MEMORY"
+WORKFLOW_TABLE = "WORKFLOW_MEMORY"
+TOOLBOX_TABLE = "TOOLBOX_MEMORY"
+ENTITY_TABLE = "ENTITY_MEMORY"
+SUMMARY_TABLE = "SUMMARY_MEMORY"
+TOOL_LOG_TABLE = "TOOL_LOG_MEMORY"
+
+ALL_TABLES = [
+    CONVERSATIONAL_TABLE,
+    KNOWLEDGE_BASE_TABLE,
+    WORKFLOW_TABLE,
+    TOOLBOX_TABLE,
+    ENTITY_TABLE,
+    SUMMARY_TABLE,
+    TOOL_LOG_TABLE,
+]
+
+
+def drop_tables(conn, tables):
+    """Drop the given tables, discarding their data. A missing table is not an error."""
+    for table in tables:
+        try:
+            with conn.cursor() as cur:
+                cur.execute(f"DROP TABLE {table} PURGE")
+                print(f"  - {table} (dropped)")
+        except oracledb.Error as e:
+            if "ORA-00942" in str(e):
+                print(f"  - {table} (not exists)")
+            else:
+                print(f"  ✗ {table}: {e}")
+
+    conn.commit()
+
+
 def table_exists(conn, table_name):
     """Check if a table exists in the current user's schema."""
     with conn.cursor() as cur:

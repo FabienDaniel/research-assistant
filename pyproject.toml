@@ -37,7 +37,12 @@ torch = { index = "pytorch-cu118" }
 # Original course notebook. It imports the removed helper.py and is kept for reference only.
 extend-exclude = ["L5.ipynb"]
 
+[tool.pytest.ini_options]
+# The project has no build system, so the package is not installed into the venv.
+pythonpath = ["."]
+
 [dependency-groups]
 dev = [
     "pre-commit>=4.7.0",
+    "pytest>=8",
 ]
