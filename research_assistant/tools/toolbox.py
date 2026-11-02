@@ -159,6 +159,12 @@ class Toolbox:
             return decorator
         return decorator(func)
 
+    def execute(self, name: str, args: dict) -> str:
+        """Run a registered tool by name. Raises ValueError for an unknown tool."""
+        if name not in self._tools_by_name:
+            raise ValueError(f"Tool '{name}' not found")
+        return str(self._tools_by_name[name](**args) or "Done")
+
     def schemas_for(self, query: str, k: int = 3) -> list[dict]:
         """Find relevant tools and return OpenAI-compatible schemas."""
         tools = []

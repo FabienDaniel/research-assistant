@@ -101,16 +101,13 @@ AGENT_SYSTEM_PROMPT = load_prompt("agent_system")
 def execute_tool(tool_name: str, tool_args: dict, current_thread_id: str | None = None) -> str:
     """Execute a tool by looking it up in the toolbox."""
 
-    if tool_name not in toolbox._tools_by_name:
-        return f"Error: Tool '{tool_name}' not found"
-
     args = dict(tool_args or {})
 
     # Ensure conversation summarization marks source rows in the active thread.
     if tool_name == "summarize_and_store" and "thread_id" not in args and current_thread_id is not None:
         args["thread_id"] = str(current_thread_id)
 
-    return str(toolbox._tools_by_name[tool_name](**args) or "Done")
+    return toolbox.execute(tool_name, args)
 
 
 # ==================== OPENAI CHAT FUNCTION ====================
