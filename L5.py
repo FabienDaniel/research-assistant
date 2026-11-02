@@ -57,44 +57,26 @@ embedding_model = HuggingFaceEmbeddings(
 
 # ==================== MEMORY STORES ====================
 
-CONVERSATIONAL_TABLE = "CONVERSATIONAL_MEMORY"
-KNOWLEDGE_BASE_TABLE = "SEMANTIC_MEMORY"
-WORKFLOW_TABLE = "WORKFLOW_MEMORY"
-TOOLBOX_TABLE = "TOOLBOX_MEMORY"
-ENTITY_TABLE = "ENTITY_MEMORY"
-SUMMARY_TABLE = "SUMMARY_MEMORY"
-TOOL_LOG_TABLE = "TOOL_LOG_MEMORY"
-
-ALL_TABLES = [
+from research_assistant.db.schema import (
+    ALL_TABLES,
     CONVERSATIONAL_TABLE,
-    KNOWLEDGE_BASE_TABLE,
-    WORKFLOW_TABLE,
-    TOOLBOX_TABLE,
     ENTITY_TABLE,
+    KNOWLEDGE_BASE_TABLE,
     SUMMARY_TABLE,
-    TOOL_LOG_TABLE]
+    TOOL_LOG_TABLE,
+    TOOLBOX_TABLE,
+    WORKFLOW_TABLE,
+    create_conversational_history_table,
+    create_tool_log_table,
+    drop_tables,
+)
 
 if args.reset:
     print("🗑️ --reset: dropping all memory tables")
-    for table in ALL_TABLES:
-        try:
-            with database_connection.cursor() as cur:
-                cur.execute(f"DROP TABLE {table} PURGE")
-                print(f"  - {table} (dropped)")
-        except oracledb.Error as e:
-            if "ORA-00942" in str(e):
-                print(f"  - {table} (not exists)")
-            else:
-                print(f"  ✗ {table}: {e}")
-
-    database_connection.commit()
+    drop_tables(database_connection, ALL_TABLES)
 else:
     print("📚 Resuming from existing memory (use --reset to start clean)")
 
-from research_assistant.db.schema import (
-    create_conversational_history_table,
-    create_tool_log_table,
-)
 from research_assistant.memory.manager import list_threads
 
 CONVERSATION_HISTORY_TABLE = create_conversational_history_table(database_connection, CONVERSATIONAL_TABLE)
