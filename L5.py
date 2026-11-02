@@ -188,13 +188,16 @@ def call_agent(query: str, thread_id: str = "1", max_iterations: int = 10) -> st
 
             for tc in msg.tool_calls:
                 tool_name = tc.function.name
-                tool_args = json_lib.loads(tc.function.arguments)
-                # Format args for display (truncate long values)
-                args_display = {k: (v[:50] + '...' if isinstance(v, str) and len(v) > 50 else v)
-                               for k, v in tool_args.items()}
-                print(f"🛠️ {tool_name}({args_display})")
+                # Unparseable arguments are logged and displayed as the raw string the model sent.
+                tool_args = tc.function.arguments
+                args_display = tool_args[:50] + '...' if len(tool_args) > 50 else tool_args
 
                 try:
+                    tool_args = json_lib.loads(tool_args)
+                    # Format args for display (truncate long values)
+                    args_display = {k: (v[:50] + '...' if isinstance(v, str) and len(v) > 50 else v)
+                                   for k, v in tool_args.items()}
+                    print(f"🛠️ {tool_name}({args_display})")
                     result = execute_tool(tool_name, tool_args, current_thread_id=thread_id)
                     status = "success"
                     error_message = None
