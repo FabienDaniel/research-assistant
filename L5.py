@@ -7,10 +7,6 @@ import argparse
 import json as json_lib
 from datetime import datetime
 
-from research_assistant.config import suppress_warnings
-
-suppress_warnings()
-
 parser = argparse.ArgumentParser(description="Memory aware research assistant.")
 parser.add_argument(
     "--reset",
