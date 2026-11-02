@@ -2,9 +2,11 @@ import os
 
 import oracledb
 
+from research_assistant.config import ORACLE_DSN, VECTOR_PASSWORD
 
-def setup_oracle_database(admin_user="system", admin_password="YourPassword123", dsn="127.0.0.1:1521/FREEPDB1",
-                          vector_password="VectorPwd_2025"):
+
+def setup_oracle_database(admin_user="system", admin_password="YourPassword123", dsn=ORACLE_DSN,
+                          vector_password=VECTOR_PASSWORD):
     """
     One-time admin setup: configures tablespace and VECTOR user.
 

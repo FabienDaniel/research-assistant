@@ -21,7 +21,13 @@ args = parser.parse_args()
 
 import oracledb
 
-from research_assistant.config import load_env
+from research_assistant.config import (
+    ORACLE_DSN,
+    ORACLE_PROGRAM,
+    VECTOR_PASSWORD,
+    VECTOR_USER,
+    load_env,
+)
 from research_assistant.db.connection import connect_to_oracle
 from research_assistant.db.setup import setup_oracle_database
 
@@ -32,10 +38,10 @@ setup_oracle_database()
 
 # Connect as the VECTOR user for all subsequent operations
 database_connection = connect_to_oracle(
-    user="VECTOR",
-    password="VectorPwd_2025",
-    dsn="127.0.0.1:1521/FREEPDB1",
-    program="devrel.deeplearning.course_1",
+    user=VECTOR_USER,
+    password=VECTOR_PASSWORD,
+    dsn=ORACLE_DSN,
+    program=ORACLE_PROGRAM,
 )
 
 print("Using user:", database_connection.username)
