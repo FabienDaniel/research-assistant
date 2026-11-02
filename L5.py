@@ -60,14 +60,7 @@ embedding_model = HuggingFaceEmbeddings(
 from research_assistant.db.schema import (
     ALL_TABLES,
     CONVERSATIONAL_TABLE,
-    ENTITY_TABLE,
     KNOWLEDGE_BASE_TABLE,
-    SUMMARY_TABLE,
-    TOOL_LOG_TABLE,
-    TOOLBOX_TABLE,
-    WORKFLOW_TABLE,
-    create_conversational_history_table,
-    create_tool_log_table,
     drop_tables,
 )
 
@@ -78,53 +71,11 @@ else:
     print("📚 Resuming from existing memory (use --reset to start clean)")
 
 from research_assistant.memory.manager import list_threads
-
-CONVERSATION_HISTORY_TABLE = create_conversational_history_table(database_connection, CONVERSATIONAL_TABLE)
-TOOL_LOG_HISTORY_TABLE = create_tool_log_table(database_connection, TOOL_LOG_TABLE)
-
-from langchain_community.vectorstores.utils import DistanceStrategy
-
-from research_assistant.memory.stores import StoreManager
-
-store_manager = StoreManager(
-    client=database_connection,
-    embedding_function=embedding_model,
-    table_names={
-        'knowledge_base': KNOWLEDGE_BASE_TABLE,
-        'workflow': WORKFLOW_TABLE,
-        'toolbox': TOOLBOX_TABLE,
-        'entity': ENTITY_TABLE,
-        'summary': SUMMARY_TABLE,
-    },
-    distance_strategy=DistanceStrategy.EUCLIDEAN_DISTANCE,
-    conversational_table=CONVERSATION_HISTORY_TABLE,
-    tool_log_table=TOOL_LOG_HISTORY_TABLE,
-)
-
-conversation_table = store_manager.get_conversational_table()
-knowledge_base_vs = store_manager.get_knowledge_base_store()
-workflow_vs = store_manager.get_workflow_store()
-toolbox_vs = store_manager.get_toolbox_store()
-entity_vs = store_manager.get_entity_store()
-summary_vs = store_manager.get_summary_store()
-tool_log_table = store_manager.get_tool_log_table()
-
-print("✅ All stores loaded via StoreManager")
-
-from research_assistant.memory.manager import MemoryManager
+from research_assistant.memory.stores import build_memory_manager
 from research_assistant.tools.common import register_common_tools
 from research_assistant.tools.toolbox import Toolbox
 
-memory_manager = MemoryManager(
-    conn=database_connection,
-    conversation_table=conversation_table,
-    knowledge_base_vs=knowledge_base_vs,
-    workflow_vs=workflow_vs,
-    toolbox_vs=toolbox_vs,
-    entity_vs=entity_vs,
-    summary_vs=summary_vs,
-    tool_log_table=TOOL_LOG_HISTORY_TABLE
-)
+memory_manager = build_memory_manager(database_connection, embedding_model)
 
 toolbox = Toolbox(memory_manager, client, embedding_model)
 
@@ -309,7 +260,7 @@ EXIT_COMMANDS = {"stop", "exit", "quit"}
 
 def select_thread() -> str:
     """Ask which conversation thread to use, listing the ones already stored."""
-    threads = list_threads(database_connection, CONVERSATION_HISTORY_TABLE)
+    threads = list_threads(database_connection, CONVERSATIONAL_TABLE)
 
     print("\n" + "=" * 50)
     if threads:
