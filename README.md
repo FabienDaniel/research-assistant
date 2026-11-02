@@ -12,6 +12,6 @@ docker logs -f oracle-free
 then launch the upp via
 
 ```bash
-uv run python L5.py
+uv run python -m research_assistant
 ```
 
